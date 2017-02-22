@@ -1,0 +1,55 @@
+---
+##########
+#
+# args:
+#  ipv4_prefix : ipv4 prefix to be checked
+#  vrf         : vrf to look in
+#  ipv4_network: the network portion of the prefix
+#  ipv4_mask   : the dotted decimal mask portion of the prefix
+#
+# returns:
+#  ipv4_prefix_exist       : boolean of whether the exact prefix was found
+#  ipv4_prefix_exist_longer: boolean of whether a longer match was found - can only be true if exact prefix match is false
+
+- name: check for ipv4 route "{{ ipv4_prefix }}"
+  ios_command:
+    commands: "show ip route vrf {{ vrf }} {{ ipv4_network }} {{ ipv4_mask }}"
+    provider: "{{ provider }}"
+  register: sh_ipv4_route_output
+
+- debug: var=sh_ipv4_route_output
+
+- set_fact:
+    ipv4_prefix_exist: true
+  when: "{{ sh_ipv4_route_output.stdout[0].count('Known') > 0 }}"
+
+- set_fact:
+    ipv4_prefix_exist: false
+  when: "{{ sh_ipv4_route_output.stdout[0].count('Known') < 1 }}"
+
+- debug: var=ipv4_prefix_exist
+
+- name: check for ipv4 longer route for "{{ ipv4_prefix }}"
+  ios_command:
+    commands: "show ip route vrf {{ vrf }} {{ ipv4_network }} {{ ipv4_mask }} longer-prefixes | i via|directly"
+    provider: "{{ provider }}"
+  register: sh_ipv4_route_longer_output
+
+- debug: var=sh_ipv4_route_longer_output
+
+- set_fact:
+    ipv4_prefix_exist_longer: false
+
+- set_fact:
+    ipv4_prefix_exist_longer: true
+  when: "{{ sh_ipv4_route_longer_output.stdout[0].count('] via ') > 0 }}"
+
+- set_fact:
+    ipv4_prefix_exist_longer: true
+  when: "{{ sh_ipv4_route_longer_output.stdout[0].count('is directly') > 0 }}"
+
+- set_fact:
+    ipv4_prefix_exist_longer: false
+  when: "{{ ipv4_prefix_exist }}"
+
+- debug: var=ipv4_prefix_exist_longer

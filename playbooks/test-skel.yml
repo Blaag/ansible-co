@@ -1,0 +1,21 @@
+---
+- hosts: "{{ host_list }}"
+  gather_facts: no
+  connection: local
+
+  tasks:
+
+  - name: obtain login credentials
+    include_vars: secrets.yml
+
+  - name: define provider
+    set_fact:
+      provider:
+        host: "{{ inventory_hostname }}"
+        username: "{{ creds['username'] }}"
+        password: "{{ creds['password'] }}"
+        auth_pass: "{{ creds['auth_pass'] }}"
+        transport: cli
+
+  - include: tasks/ios-vlan-exist-check.yml
+...
