@@ -1,0 +1,29 @@
+---
+##########
+#
+# args:
+#  ipv4_prefix: ipv4 prefix to be analyzed
+#
+# returns:
+#  ipv4_network      : network portion of the prefix
+#  ipv4_mask         : the prefix length in dotted decimal
+#  ipv4_prefix_length: the length of the prefix
+
+- name: "determine network and prefix length from prefix {{ ipv4_prefix }}"
+  set_fact:
+    ipv4_network: "{{ ipv4_prefix | regex_replace('(.*)/[0-9]+', '\\1') }}"
+    ipv4_prefix_length: "{{ ipv4_prefix | regex_replace('.*(/[0-9]+)', '\\1') }}"
+
+#- debug: var=ipv4_network
+#- debug: var=ipv4_prefix_length
+    
+- name: "convert prefix length {{ ipv4_prefix_length }} to dotted decimal mask"
+  local_action: shell echo "{{ ipv4_prefix_length }}" | /usr/bin/awk -f ../scripts/ipv4-transform-prefix-or-mask.awk
+  register: converted_ipv4_prefix_length_output
+  changed_when: false
+
+- set_fact:
+    ipv4_mask: "{{ converted_ipv4_prefix_length_output.stdout }}"
+
+#- debug: var=converted_ipv4_prefix_length_output
+#- debug: var=ipv4_mask

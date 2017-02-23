@@ -18,4 +18,8 @@
         transport: cli
 
   - include: ../tasks/ios-ipv4-route-exist-check.yml
+
+  - name: print final results
+    debug:
+      msg: "result of prefix {{ ipv4_prefix }} exist: {{ ipv4_prefix_exist }} with longer match: {{ ipv4_prefix_exist_longer }}"
 ...
