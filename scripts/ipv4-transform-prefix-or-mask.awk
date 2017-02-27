@@ -24,6 +24,14 @@ function prefixToMask(prefix) {
   if (prefix == "/10") { mask = "255.192.0.0" }
   if (prefix == "/9") { mask = "255.128.0.0" }
   if (prefix == "/8") { mask = "255.0.0.0" }
+  if (prefix == "/7") { mask = "254.0.0.0" }
+  if (prefix == "/6") { mask = "252.0.0.0" }
+  if (prefix == "/5") { mask = "248.0.0.0" }
+  if (prefix == "/4") { mask = "240.0.0.0" }
+  if (prefix == "/3") { mask = "224.0.0.0" }
+  if (prefix == "/2") { mask = "192.0.0.0" }
+  if (prefix == "/1") { mask = "128.0.0.0" }
+  if (prefix == "/0") { mask = "0.0.0.0" }
 
   return mask
 }
@@ -55,6 +63,14 @@ function maskToPrefix(mask) {
   if (mask == "255.192.0.0") { prefix = "/10" }
   if (mask == "255.128.0.0") { prefix = "/9" }
   if (mask == "255.0.0.0") { prefix = "/8" }
+  if (mask == "254.0.0.0") { prefix = "/7" }
+  if (mask == "252.0.0.0") { prefix = "/6" }
+  if (mask == "248.0.0.0") { prefix = "/5" }
+  if (mask == "240.0.0.0") { prefix = "/4" }
+  if (mask == "224.0.0.0") { prefix = "/3" }
+  if (mask == "192.0.0.0") { prefix = "/2" }
+  if (mask == "128.0.0.0") { prefix = "/1" }
+  if (mask == "0.0.0.0") { prefix = "/0" }
 
   return prefix
 }
