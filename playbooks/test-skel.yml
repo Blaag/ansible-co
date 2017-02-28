@@ -6,7 +6,7 @@
   tasks:
 
   - name: obtain login credentials
-    include_vars: secrets.yml
+    include_vars: ../secrets.yml
 
   - name: define provider
     set_fact:
