@@ -12,7 +12,7 @@
   #set_fact:
     #ansible_net_model: none
 
-- name: "gathering facts about {{ inventory_hostname }}"
+- name: "gather ios facts"
   ios_facts:
     gather_subset:
       - hardware
@@ -42,14 +42,28 @@
 
 - debug: var=cisco_platform_model
 
-- name: "determine platform and model number"
+- name: "determine platform, model and software version"
   set_fact:
     cisco_platform: "{{ cisco_platform_model.stdout_lines[0] }}"
     cisco_model: "{{ cisco_platform_model.stdout_lines[1] }}"
-    #ansible_net_model: "{{ result.stdout[0] | regex_replace('.*\\ncisco (.*) processor .*bytes of memory\\..*', '\\1') }}"
+    cisco_version: "{{ cisco_platform_model.stdout_lines[2] }}"
 
 - debug: var=cisco_platform
 - debug: var=cisco_model
+
+- name: "found nexus device - gather nxos facts"
+  nxos_facts:
+    gather_subset:
+      - hardware
+    provider: "{{ provider }}"
+  ignore_errors: yes
+  when: cisco_platform.count('nxos') > 0
+
+- debug: var=ansible_net_model
+- debug: var=ansible_net_serialnum
+- debug: var=ansible_net_version
+- debug: var=ansible_net_filesystems
+- debug: var=ansible_net_image
 
 - name: "perform extra check to determine nexus model number"
   ios_command:
@@ -78,4 +92,4 @@
 
 - name: print final results
   debug:
-    msg: "platform: {{ cisco_platform }} model: {{ cisco_model }}"
+    msg: "host: {{ inventory_hostname }} platform: {{ cisco_platform }} model: {{ cisco_model }} version: {{ cisco_version }}"
