@@ -1,0 +1,17 @@
+---
+##########
+#
+# args:
+#  arg1: a variable the task requires to be passed in
+#
+# returns:
+#  result_fact1: a fact set within the task that is returned
+#  result_fact2: another fact set within the task that is returned
+
+- name: "do something with {{ arg1 }}"
+  set_fact:
+    result_fact1: "{{ arg1 }} is neat"
+    result_fact2: "{{ arg1 }} is neat again"
+
+#- debug: var=result_fact1
+#- debug: var=result_fact2

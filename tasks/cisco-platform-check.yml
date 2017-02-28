@@ -1,0 +1,81 @@
+---
+##########
+#
+# args:
+#  arg1: a variable the task requires to be passed in
+#
+# returns:
+#  cisco_platform: ios, iosxe, iosxr, or nxos
+#  result_fact2: another fact set within the task that is returned
+
+#- name: set temp fact
+  #set_fact:
+    #ansible_net_model: none
+
+- name: "gathering facts about {{ inventory_hostname }}"
+  ios_facts:
+    gather_subset:
+      - hardware
+    provider: "{{ provider }}"
+
+- debug: var=ansible_net_model
+- debug: var=ansible_net_serialnum
+- debug: var=ansible_net_version
+- debug: var=ansible_net_filesystems
+- debug: var=ansible_net_image
+
+- name: "gather 'show version' information"
+  ios_command:
+    commands:
+      - show version
+    provider: "{{ provider }}"
+  register: result
+  #when: ansible_net_model is none
+
+- debug: var=result
+
+- name: "send version output to external script"
+  local_action: shell echo "{{ result.stdout[0] }}" | /usr/bin/awk -f ../scripts/cisco-platform-model.awk
+  register: cisco_platform_model
+  changed_when: false
+  #when: ansible_net_model is none
+
+- debug: var=cisco_platform_model
+
+- name: "determine platform and model number"
+  set_fact:
+    cisco_platform: "{{ cisco_platform_model.stdout_lines[0] }}"
+    cisco_model: "{{ cisco_platform_model.stdout_lines[1] }}"
+    #ansible_net_model: "{{ result.stdout[0] | regex_replace('.*\\ncisco (.*) processor .*bytes of memory\\..*', '\\1') }}"
+
+- debug: var=cisco_platform
+- debug: var=cisco_model
+
+- name: "perform extra check to determine nexus model number"
+  ios_command:
+    commands:
+      - show inventory
+    provider: "{{ provider }}"
+  register: result
+  when: cisco_model.count('undetermined') > 0
+
+- debug: var=result
+
+- name: "send inventory output to external script"
+  local_action: shell echo "{{ result.stdout[0] }}" | /usr/bin/awk -f ../scripts/cisco-nexus-model.awk
+  register: cisco_inventory
+  changed_when: false
+  when: cisco_model.count('undetermined') > 0
+
+- debug: var=cisco_inventory
+
+- name: "determine nexus model"
+  set_fact:
+    cisco_model: "{{ cisco_inventory.stdout_lines[0] }}"
+  when: cisco_model.count('undetermined') > 0
+
+- debug: var=cisco_model
+
+- name: print final results
+  debug:
+    msg: "platform: {{ cisco_platform }} model: {{ cisco_model }}"
