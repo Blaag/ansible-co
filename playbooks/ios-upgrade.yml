@@ -17,6 +17,57 @@
         auth_pass: "{{ creds['auth_pass'] }}"
         transport: cli
 
-  #- include: ../tasks/ios-vlan-exist-check.yml
   - include: ../tasks/cisco-platform-check.yml
+
+  - name: determine suggested upgrade version
+    include_vars: "../vars/{{ item }}"
+    with_items:
+      - "{{ cisco_model }}.yml"
+
+  - debug: var=cisco_upgrade_version
+
+  - name: determine software destination
+    set_fact:
+      image_destination: "{{ ansible_net_image | regex_replace('^(.*:).*$', '\\1') }}"
+
+  - debug: var=image_destination
+
+  - name: determine current image name
+    set_fact:
+      existing_image_name: "{{ ansible_net_image | regex_replace('^.*:(.*)$', '\\1') }}"
+
+  - debug: var=existing_image_name
+
+  #- name: back up existing image
+    #ios_command:
+      #commands:
+        #- "copy {{ ansible_net_image }} tftp://10.0.15.68/{{ existing_image_name }}\n\n"
+      #provider: "{{ provider }}"
+    #register: result
+
+  #- debug: var=result
+
+  - name: ensure running configuration is saved
+    ios_config:
+      save: yes
+      provider: "{{ provider }}"
+    register: result
+    ignore_errors: yes
+
+  - debug: var=result
+
+  - name: back up configuration
+    ios_command:
+      commands:
+        - "copy running-config tftp://10.0.15.68/{{ cisco_hostname }}-running-config.txt\n\n"
+      provider: "{{ provider }}"
+    register: result
+
+  - debug: var=result
+
+  #- name: copy new image to device
+
+  #- name: set boot variable
+
+  #- name: reload device
 ...

@@ -18,11 +18,18 @@
       - hardware
     provider: "{{ provider }}"
 
+- debug: var=ansible_net_hostname
 - debug: var=ansible_net_model
 - debug: var=ansible_net_serialnum
 - debug: var=ansible_net_version
 - debug: var=ansible_net_filesystems
 - debug: var=ansible_net_image
+
+- name: "clean up hostnames with spaces"
+  set_fact:
+    cisco_hostname: "{{ ansible_net_hostname | regex_replace('^\\w*(.*)\\w*$', '\\1') }}"
+
+- debug: var=cisco_hostname
 
 - name: "gather 'show version' information"
   ios_command:
