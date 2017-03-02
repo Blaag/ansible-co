@@ -19,6 +19,10 @@
 
   - include: ../tasks/cisco-platform-check.yml
 
+  - name: assume upgraded needed
+    set_fact:
+      upgraded_needed: true
+
   - name: determine suggested upgrade version
     include_vars: "../vars/{{ item }}"
     with_items:
@@ -26,17 +30,23 @@
 
   - debug: var=cisco_upgrade_version
 
+  - name: determine current image name
+    set_fact:
+      existing_image_name: "{{ ansible_net_image | regex_replace('^.*:/?(.*)$', '\\1') }}"
+
+  - debug: var=existing_image_name
+
+  - name: determine whether upgrade necessary
+    set_fact:
+      upgrade_needed: "{{ cisco_upgrade_version != existing_image_name }}"
+
+  - debug: var=upgrade_needed
+
   - name: determine software destination
     set_fact:
       image_destination: "{{ ansible_net_image | regex_replace('^(.*:).*$', '\\1') }}"
 
   - debug: var=image_destination
-
-  - name: determine current image name
-    set_fact:
-      existing_image_name: "{{ ansible_net_image | regex_replace('^.*:(.*)$', '\\1') }}"
-
-  - debug: var=existing_image_name
 
   #- name: back up existing image
     #ios_command:
@@ -47,27 +57,74 @@
 
   #- debug: var=result
 
-  - name: ensure running configuration is saved
-    ios_config:
-      save: yes
-      provider: "{{ provider }}"
+  - name: ensure ios running configuration is written to startup
+    local_action: "shell ../scripts/ios-copy-run-start.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1"
+    changed_when: false
+    when: cisco_platform == 'ios' and upgrade_needed
     register: result
-    ignore_errors: yes
+    # failed_when is not working for some reason - everything succeeds
+    failed_when: "result.stdout[0].count('OK') > 10"
+    tags: backup
 
   - debug: var=result
 
-  - name: back up configuration
-    ios_command:
-      commands:
-        - "copy running-config tftp://10.0.15.68/{{ cisco_hostname }}-running-config.txt\n\n"
-      provider: "{{ provider }}"
+  - name: ensure iosxe running configuration is written to startup
+    local_action: "shell ../scripts/ios-copy-run-start.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1"
+    changed_when: false
+    when: cisco_platform == 'iosxe' and upgrade_needed
     register: result
+    # failed_when is not working for some reason - everything succeeds
+    failed_when: "result.stdout[0].count('OK') > 10"
+    tags: backup
 
   - debug: var=result
 
-  #- name: copy new image to device
+  - name: ensure nxos configuration is written to startup
+    local_action: "shell ../scripts/ios-copy-run-start.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1"
+    changed_when: false
+    when: cisco_platform == 'nxos' and upgrade_needed
+    register: result_nxos
+    # failed_when is not working for some reason - everything succeeds
+    failed_when: result_nxos.stdout[0].count('#') > 0
+    tags: backup
 
-  #- name: set boot variable
+  - debug: var=result
 
+  #- name: back up configuration
+    #ntc_save_config:
+      #platform: cisco_ios_ssh
+      #host: "{{ inventory_hostname }}"
+      #username: "{{ creds['username'] }}"
+      #password: "{{ creds['password'] }}"
+      #local_file: "{{ inventory_hostname }}.cfg"
+    #register: result
+    #tags: backup
+
+  #- debug: var=result
+
+  - name: copy new image to device
+    ntc_file_copy:
+      platform: cisco_ios_ssh
+      local_file: "../../ios/{{ cisco_upgrade_version }}"
+      file_system: "{{ image_destination }}"
+      host: "{{ inventory_hostname }}"
+      username: "{{ creds['username'] }}"
+      password: "{{ creds['password'] }}"
+    register: ntc_copy
+    when: cisco_platform == 'ios' and upgrade_needed
+
+  - debug: var=ntc_copy
+
+  - name: set boot variable
+    ntc_install_os:
+      platform: cisco_ios_ssh
+      #system_image_file: "{{ image_destination }}:{{ cisco_upgrade_version }}"
+      system_image_file: "{{ cisco_upgrade_version }}"
+      host: "{{ inventory_hostname }}"
+      username: "{{ creds['username'] }}"
+      password: "{{ creds['password'] }}"
+    register: ntc_install
+    when: cisco_platform == 'ios' and upgrade_needed
+      
   #- name: reload device
 ...

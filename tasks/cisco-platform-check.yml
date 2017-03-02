@@ -27,7 +27,8 @@
 
 - name: "clean up hostnames with spaces"
   set_fact:
-    cisco_hostname: "{{ ansible_net_hostname | regex_replace('^\\w*(.*)\\w*$', '\\1') }}"
+    #cisco_hostname: "{{ ansible_net_hostname | regex_replace('^\\w*(.*)\\w*$', '\\1') }}"
+    cisco_hostname: "{{ ansible_net_hostname | trim }}"
 
 - debug: var=cisco_hostname
 
@@ -39,7 +40,7 @@
   register: result
   #when: ansible_net_model is none
 
-- debug: var=result
+#- debug: var=result
 
 - name: "send version output to external script"
   local_action: shell echo "{{ result.stdout[0] }}" | /usr/bin/awk -f ../scripts/cisco-platform-model.awk
@@ -49,7 +50,7 @@
 
 - debug: var=cisco_platform_model
 
-- name: "determine platform, model and software version"
+- name: "set fact for platform, model and software version"
   set_fact:
     cisco_platform: "{{ cisco_platform_model.stdout_lines[0] }}"
     cisco_model: "{{ cisco_platform_model.stdout_lines[1] }}"
@@ -58,7 +59,7 @@
 - debug: var=cisco_platform
 - debug: var=cisco_model
 
-- name: "found nexus device - gather nxos facts"
+- name: "gather nxos facts"
   nxos_facts:
     gather_subset:
       - hardware
@@ -72,7 +73,7 @@
 - debug: var=ansible_net_filesystems
 - debug: var=ansible_net_image
 
-- name: "perform extra check to determine nexus model number"
+- name: "perform additional check to determine nexus model number"
   ios_command:
     commands:
       - show inventory
@@ -90,13 +91,13 @@
 
 - debug: var=cisco_inventory
 
-- name: "determine nexus model"
+- name: "set fact for nexus model"
   set_fact:
     cisco_model: "{{ cisco_inventory.stdout_lines[0] }}"
   when: cisco_model.count('undetermined') > 0
 
 - debug: var=cisco_model
 
-- name: print final results
+- name: print task results
   debug:
     msg: "host: {{ inventory_hostname }} platform: {{ cisco_platform }} model: {{ cisco_model }} version: {{ cisco_version }}"
