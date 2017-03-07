@@ -36,9 +36,27 @@
 
   - debug: var=existing_image_name
 
+  - name: perform extra check when image name contains packages.conf
+    local_action: "shell echo {{ cisco_upgrade_version }} {{ cisco_version }} | awk -f ../scripts/cisco-iosxe-version-match.awk"
+    register: shorthand
+    when: existing_image_name.count('packages.conf') > 0
+
+  - name: set shorthand of cisco upgrade version
+    set_fact:
+      shorthand_cisco_upgrade_version: "{{ shorthand.stdout_lines[0] }}"
+    when: existing_image_name.count('packages.conf') > 0
+
+  - debug: var=shorthand_cisco_upgrade_version
+
   - name: determine whether upgrade necessary
     set_fact:
       upgrade_needed: "{{ cisco_upgrade_version != existing_image_name }}"
+    when: shorthand_cisco_upgrade_version is undefined
+
+  - name: determine whether upgrade necessary when image name contains packages.conf
+    set_fact:
+      upgrade_needed: "{{ shorthand_cisco_upgrade_version != cisco_version }}"
+    when: shorthand_cisco_upgrade_version is defined
 
   - debug: var=upgrade_needed
 
@@ -47,15 +65,6 @@
       image_destination: "{{ ansible_net_image | regex_replace('^(.*:).*$', '\\1') }}"
 
   - debug: var=image_destination
-
-  #- name: back up existing image
-    #ios_command:
-      #commands:
-        #- "copy {{ ansible_net_image }} tftp://10.0.15.68/{{ existing_image_name }}\n\n"
-      #provider: "{{ provider }}"
-    #register: result
-
-  #- debug: var=result
 
   - name: ensure ios running configuration is written to startup
     local_action: "shell ../scripts/ios-copy-run-start.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1"
@@ -90,6 +99,17 @@
 
   - debug: var=result
 
+  - name: "convert 3850 bundle mode to install mode"
+    local_action: "shell ../scripts/iosxe-software-expand.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1 {{ image_destination }}"
+    #ios_command:
+      #commands:
+        #"software expand running to {{ image_destination }} verbose"
+      #provider: "{{ provider }}"
+    register: expand
+    when: cisco_platform == 'iosxe' and upgrade_needed and existing_image_name.count('packages.conf') < 1
+
+  - debug: var=expand
+
   #- name: back up configuration
     #ntc_save_config:
       #platform: cisco_ios_ssh
@@ -102,7 +122,10 @@
 
   #- debug: var=result
 
-  - name: copy new image to device
+  - debug: var=cisco_upgrade_version
+  - debug: var=image_destination
+
+  - name: copy new ios image to device
     ntc_file_copy:
       platform: cisco_ios_ssh
       local_file: "../../ios/{{ cisco_upgrade_version }}"
@@ -112,6 +135,17 @@
       password: "{{ creds['password'] }}"
     register: ntc_copy
     when: cisco_platform == 'ios' and upgrade_needed
+
+  - name: copy new iosxe image to device
+    ntc_file_copy:
+      platform: cisco_ios_ssh
+      local_file: "../../ios/{{ cisco_upgrade_version }}"
+      file_system: "{{ image_destination }}"
+      host: "{{ inventory_hostname }}"
+      username: "{{ creds['username'] }}"
+      password: "{{ creds['password'] }}"
+    register: ntc_copy
+    when: cisco_platform == 'iosxe' and upgrade_needed
 
   - debug: var=ntc_copy
 
@@ -124,7 +158,33 @@
       username: "{{ creds['username'] }}"
       password: "{{ creds['password'] }}"
     register: ntc_install
-    when: cisco_platform == 'ios' and upgrade_needed
+    when: cisco_platform == 'ios' and upgrade_needed and image_destination == 'flash:' and cisco_model.count('WS-C3750') < 1
+
+  - name: "install image on 3750 ios device"
+    ios_command:
+      commands:
+        - "archive download-sw {{ image_destination }}{{ cisco_upgrade_version }}"
+      provider: "{{ provider }}"
+    register: result
+    when: cisco_platform == 'ios' and upgrade_needed and cisco_model.count('WS-C3750') > 0
       
+  - debug: var=result
+
+  - name: "install image on 3650 iosxe device"
+    local_action: "shell ../scripts/iosxe-software-install-file.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 40 {{ image_destination }} {{ cisco_upgrade_version }}"
+    register: result
+    #failed_when: result.stdout[0].count('Fail') > 0
+    when: cisco_platform == 'iosxe' and upgrade_needed and cisco_model.count('WS-C3650') > 0
+      
+  - debug: var=result
+
+  - name: "install image on 3850 iosxe device"
+    local_action: "shell ../scripts/iosxe-software-install-file.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 40 {{ image_destination }} {{ cisco_upgrade_version }}"
+    register: result
+    when: cisco_platform == 'iosxe' and upgrade_needed and cisco_model.count('WS-C3850') > 0
+
+  - debug: var=result
+
+
   #- name: reload device
 ...
