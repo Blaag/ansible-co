@@ -12,7 +12,7 @@ import sys
 #
 connection = netmiko.ConnectHandler(ip=sys.argv[1], device_type='cisco_ios', username=sys.argv[2], password=sys.argv[3], global_delay_factor=int(sys.argv[4]))
 
-output = connection.send_command('archive download-sw /imageonly ' + sys.argv[5] + '\r\n')
+output = connection.send_command('archive download-sw ' + sys.argv[5] + '\r\n')
 
 print(output)
 
