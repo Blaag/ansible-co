@@ -1,0 +1,14 @@
+---
+- name: ensure nxos configuration is written to startup
+  local_action: "shell ../scripts/ios-copy-run-start.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1"
+  #changed_when: false
+  #when: cisco_platform == 'nxos' and upgrade_needed
+  register: result_nxos
+  # failed_when is not working for some reason - everything succeeds
+  failed_when: result_nxos.stdout[0].count('#') > 0
+  tags: backup
+
+- debug: var=result_nxos
+- debug: var=cisco_upgrade_version
+- debug: var=image_destination
+...

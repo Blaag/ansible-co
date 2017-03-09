@@ -1,0 +1,2 @@
+- debug: var=cisco_upgrade_version
+- debug: var=image_destination

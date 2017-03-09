@@ -1,0 +1,40 @@
+---
+- name: ensure iosxe running configuration is written to startup
+  local_action: "shell ../scripts/ios-copy-run-start.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1"
+  #changed_when: false
+  #when: cisco_platform == 'iosxe' and upgrade_needed
+  register: result
+  # failed_when is not working for some reason - everything succeeds
+  failed_when: "result.stdout[0].count('OK') > 10"
+  tags: backup
+
+- debug: var=result
+
+- name: convert iosxe bundle mode to install mode
+  local_action: "shell ../scripts/iosxe-software-expand.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1 {{ image_destination }}"
+  register: expand
+  when: existing_image_name.count('packages.conf') < 1
+
+- debug: var=expand
+- debug: var=cisco_upgrade_version
+- debug: var=image_destination
+
+- name: copy new iosxe image to device
+  ntc_file_copy:
+    platform: cisco_ios_ssh
+    local_file: "../../ios/{{ cisco_upgrade_version }}"
+    file_system: "{{ image_destination }}"
+    host: "{{ inventory_hostname }}"
+    username: "{{ creds['username'] }}"
+    password: "{{ creds['password'] }}"
+  register: ntc_copy
+
+- debug: var=ntc_copy
+
+- name: install image on iosxe device
+  local_action: "shell ../scripts/iosxe-software-install-file.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 40 {{ image_destination }} {{ cisco_upgrade_version }}"
+  register: install_result
+  #failed_when: result.stdout[0].count('Fail') > 0
+
+- debug: var=install_result
+...

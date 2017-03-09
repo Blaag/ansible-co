@@ -1,0 +1,88 @@
+---
+- name: ensure ios running configuration is written to startup
+  local_action: "shell ../scripts/ios-copy-run-start.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1"
+  #changed_when: false
+  #when: cisco_platform == 'ios' and upgrade_needed
+  register: result
+  # failed_when is not working for some reason - everything succeeds
+  failed_when: "result.stdout[0].count('OK') > 10"
+  tags: backup
+
+- debug: var=result
+- debug: var=cisco_upgrade_version
+- debug: var=image_destination
+
+- name: test whether software can be installed via archive command
+  # ignore errors - script will set return code to 1 if archive command is not supported
+  local_action: "shell ../scripts/ios-check-archive-support.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1"
+  register: archive_result
+  ignore_errors: yes
+  
+- debug: var=archive_result
+
+- name: set ios fact regarding archive command support
+  set_fact:
+    archive_support: "{{ archive_result.rc == 0 }}"
+
+- debug: var=archive_support
+
+- name: copy new ios image to device
+  ntc_file_copy:
+    platform: cisco_ios_ssh
+    local_file: "../../ios/{{ cisco_upgrade_version }}"
+    file_system: "{{ image_destination }}"
+    host: "{{ inventory_hostname }}"
+    username: "{{ creds['username'] }}"
+    password: "{{ creds['password'] }}"
+  register: ntc_copy
+  ignore_errors: yes
+  # skip ME-3600s they never have enough flash for two images
+  # if for some reason flash is empty and the image is copied
+  # it will not be able to extract, so skip
+  when: cisco_model.count('ME-3600') < 1
+
+- debug: var=ntc_copy
+
+- name: set ios boot variable on device that does not support archive command
+  ntc_install_os:
+    platform: cisco_ios_ssh
+    system_image_file: "{{ cisco_upgrade_version }}"
+    host: "{{ inventory_hostname }}"
+    username: "{{ creds['username'] }}"
+    password: "{{ creds['password'] }}"
+  register: ntc_install
+  when: image_destination == 'flash:' and not archive_support
+
+- name: install ios image on device that supports archive command and has sufficient room in flash
+  local_action: "shell ../scripts/ios-archive-download-sw.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 40 {{ image_destination }}{{ cisco_upgrade_version }}"
+  register: result
+  when: archive_support and ntc_copy.failed is undefined and cisco_model.count('ME-3600') < 1
+
+- name: remove existing ios image on device that supports archive command but does not have sufficient room in flash
+  ios_command:
+    commands:
+      - "del /force {{ image_destination }}{{ existing_image_name }}"
+    provider: "{{ provider }}"
+  register: delete_result
+  when: archive_support and ntc_copy.failed is defined
+
+- debug: var=delete_result
+
+- name: retry alternate ios image install on device that supports archive command
+  local_action: "shell ../scripts/ios-archive-download-sw.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 40 tftp://10.0.15.68/{{ cisco_upgrade_version }}"
+  #ios_command:
+    #commands:
+      #- "archive download-sw tftp://10.0.15.68/{{ cisco_upgrade_version }}"
+    #provider: "{{ provider }}"
+  register: result
+  when: archive_support and (ntc_copy.failed is defined or cisco_model.count('ME-3600') > 0)
+
+- debug: var=result
+
+#- name: special ios image install for ME-3600
+  #local_action: "shell ../scripts/ios-archive-download-sw.py {{ inventory_hostname }} {{ creds['username'] }} {{ creds['password'] }} 1 tftp://10.0.15.68/{{ cisco_upgrade_version }}"
+  #register: result
+  #when: archive_support and cisco_model.count('ME-3600') > 0
+
+#- debug: var=result
+...
