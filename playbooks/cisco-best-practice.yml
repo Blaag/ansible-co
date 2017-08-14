@@ -17,5 +17,5 @@
         auth_pass: "{{ creds['auth_pass'] }}"
         transport: cli
 
-  - include: ../tasks/ios-vlan-exist-check.yml
+  - include: ../tasks/cisco-aux-disable.yml
 ...

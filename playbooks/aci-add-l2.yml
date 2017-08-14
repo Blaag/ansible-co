@@ -1,0 +1,188 @@
+# ansible-playbook aci-add-l2.yml -e "host_list=10.0.49.34 tenant=e-for3t_oit bdname=3_CSN_MNGMNT_EFORT vrf=oit agency=Infrastructure phy=oit_phys vlan=3"
+---
+- hosts: "{{ host_list }}"
+  gather_facts: no
+  connection: local
+
+  tasks:
+
+  - name: obtain aci login credentials
+    include_vars: ../aci-secrets.yml
+
+  - name: define provider
+    set_fact:
+      provider:
+        host: "{{ inventory_hostname }}"
+        username: "{{ creds['username'] }}"
+        password: "{{ creds['password'] }}"
+        auth_pass: "{{ creds['auth_pass'] }}"
+        transport: cli
+
+  - name: define user
+    set_fact:
+      user: "{{ creds['username'] }}"
+
+  #- name: define pass
+    #set_fact:
+      #pass: "{{ creds['password'] }}"
+
+  - name: create bridge domain json
+    template:
+      src: "../aci/templates/aci_bridge_domain_create.j2"
+      dest: "../aci/configs/aci_bridge_domain_create.json"
+
+  - name: create bridge domain from json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/BD-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_bridge_domain_create.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create epg json
+    template:
+      src: "../aci/templates/aci_epg_create.j2"
+      dest: "../aci/configs/aci_epg_create.json"
+
+  - name: add epg using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_create.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create epg physical domain json
+    template:
+      src: "../aci/templates/aci_epg_physical_domain.j2"
+      dest: "../aci/configs/aci_epg_physical_domain.json"
+
+  - name: attach epg to physical domain using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_physical_domain.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to 7k vpc json
+    template:
+      src: "../aci/templates/aci_epg_static_7k_vpc.j2"
+      dest: "../aci/configs/aci_epg_static_7k_vpc.json"
+
+  - name: add static epg to 7k vpc using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_7k_vpc.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to vblock 540 fi a json
+    template:
+      src: "../aci/templates/aci_epg_static_vblock_540_fi_a.j2"
+      dest: "../aci/configs/aci_epg_static_vblock_540_fi_a.json"
+
+  - name: add static epg to vblock 540 fi a using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_vblock_540_fi_a.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to vblock 540 fi b json
+    template:
+      src: "../aci/templates/aci_epg_static_vblock_540_fi_b.j2"
+      dest: "../aci/configs/aci_epg_static_vblock_540_fi_b.json"
+
+  - name: add static epg to vblock 540 fi b using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_vblock_540_fi_b.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to isilon node 1 json
+    template:
+      src: "../aci/templates/aci_epg_static_isilon_1.j2"
+      dest: "../aci/configs/aci_epg_static_isilon_1.json"
+
+  - name: add static epg to isilon node 1 using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_isilon_1.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to isilon node 2 json
+    template:
+      src: "../aci/templates/aci_epg_static_isilon_2.j2"
+      dest: "../aci/configs/aci_epg_static_isilon_2.json"
+
+  - name: add static epg to isilon node 2 using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_isilon_2.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to isilon node 3 json
+    template:
+      src: "../aci/templates/aci_epg_static_isilon_3.j2"
+      dest: "../aci/configs/aci_epg_static_isilon_3.json"
+
+  - name: add static epg to isilon node 3 using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_isilon_3.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to isilon node 4 json
+    template:
+      src: "../aci/templates/aci_epg_static_isilon_4.j2"
+      dest: "../aci/configs/aci_epg_static_isilon_4.json"
+
+  - name: add static epg to isilon node 4 using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_isilon_4.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to isilon node 5 json
+    template:
+      src: "../aci/templates/aci_epg_static_isilon_5.j2"
+      dest: "../aci/configs/aci_epg_static_isilon_5.json"
+
+  - name: add static epg to isilon node 5 using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_isilon_5.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to isilon node 6 json
+    template:
+      src: "../aci/templates/aci_epg_static_isilon_6.j2"
+      dest: "../aci/configs/aci_epg_static_isilon_6.json"
+
+  - name: add static epg to isilon node 6 using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_isilon_6.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to isilon node 7 json
+    template:
+      src: "../aci/templates/aci_epg_static_isilon_7.j2"
+      dest: "../aci/configs/aci_epg_static_isilon_7.json"
+
+  - name: add static epg to isilon node 7 using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_isilon_7.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+  - name: create static epg to isilon node 8 json
+    template:
+      src: "../aci/templates/aci_epg_static_isilon_8.j2"
+      dest: "../aci/configs/aci_epg_static_isilon_8.json"
+
+  - name: add static epg to isilon node 8 using json
+    aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_isilon_8.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    ignore_errors: true
+
+
+
+
+
+
+
+  #- name: create static epg to amp server a json
+    #template:
+      #src: "../aci/templates/aci_epg_static_amp_a.j2"
+      #dest: "../aci/configs/aci_epg_static_amp_a.json"
+
+  #- name: add static epg to amp server a using json
+    #aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_amp_a.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    #ignore_errors: true
+
+  #- name: create static epg to amp server b json
+    #template:
+      #src: "../aci/templates/aci_epg_static_amp_b.j2"
+      #dest: "../aci/configs/aci_epg_static_amp_b.json"
+
+  #- name: add static epg to amp server b using json
+    #aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_amp_b.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    #ignore_errors: true
+
+  #- name: create static epg to amp server c json
+    #template:
+      #src: "../aci/templates/aci_epg_static_amp_c.j2"
+      #dest: "../aci/configs/aci_epg_static_amp_c.json"
+
+  #- name: add static epg to amp server a using json
+    #aci_rest: action=post uri=/api/node/mo/uni/tn-{{ tenant }}/ap-{{ agency }}/epg-{{ bdname }}.json config_file=/home/schockc/ansible/aci/configs/aci_epg_static_amp_c.json host={{ inventory_hostname }} username={{ user }} password="{{ creds['password'] }}"
+    #ignore_errors: true
+...
+

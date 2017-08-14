@@ -1,0 +1,27 @@
+---
+##########
+#
+# args:
+#  this task does not require any args to be passed in
+#
+# returns:
+#  this task does not return any facts
+
+- name: "gather config from facts"
+  ios_facts:
+    gather_subset:
+      - config
+    provider: "{{ provider }}"
+
+#- debug: var=ansible_net_config
+
+- name: "disable logins on aux port"
+  ios_config:
+    host: "{{ host_list }}"
+    provider: "{{ provider }}"
+    lines:
+      - no exec
+    parents: "line aux 0"
+    save: yes
+  when: ansible_net_config.count('\nline aux 0\n') == 1
+
